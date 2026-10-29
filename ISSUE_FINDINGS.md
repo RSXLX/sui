@@ -1,6 +1,6 @@
 # 审计发现
 
-基线：本 fork 的 `main` 与 `MystenLabs/sui` 的 `main` 指向同一提交 `d16b6a12e734629d1dc523d758a4f2a73c30b8c8`（`grpc: opt-in address-alias checking for VerifySignature (#28471)`）。下面 5 条都在这个提交上用失败测试复现过。
+基线：本 fork 的 `main` 与 `MystenLabs/sui` 的 `main` 指向同一提交 `d16b6a12e734629d1dc523d758a4f2a73c30b8c8`（`grpc: opt-in address-alias checking for VerifySignature (#28471)`）。下面 6 条都在这个提交上用失败测试复现过。
 
 这些测试断言的是正确行为，因此在当前代码上会失败。它们是复现，不是修复。
 
@@ -216,3 +216,37 @@ SUI_SKIP_SIMTESTS=1 cargo test -p move-coverage --lib native_function_summary_do
 ### 重复检索
 
 `percent coverage` 和 `NaN` 在 `MystenLabs/sui` 的 issue 里没有命中。
+
+## 6. `sui client faucet` 不认 `localhost` RPC
+
+- 严重程度：低
+- 置信度：高
+- 位置：`crates/sui/src/client_commands.rs` 第 4556–4575 行，`find_faucet_url`
+
+### 描述
+
+不带 `--url` 时，faucet 命令用当前环境的 RPC 主机名选择水龙头。本地网只认两个常量的主机名：`SUI_LOCAL_NETWORK_URL`（`127.0.0.1`）和 `SUI_LOCAL_NETWORK_URL_0`（`0.0.0.0`）。`http://localhost:9000` 的主机名是 `localhost`，比较失败，于是报 “Cannot recognize the active network”。
+
+同一仓库里别的入口会把 `localhost` 当成 `127.0.0.1`。文档和教程里本地 RPC 经常写成 `localhost`。devnet / testnet 的主机名比较不受影响。
+
+### 复现
+
+```bash
+SUI_SKIP_SIMTESTS=1 cargo test -p sui --lib find_faucet_url_accepts_localhost_hostname -- --nocapture
+```
+
+测试在 `crates/sui/src/client_commands.rs` 的 `find_faucet_url_accepts_localhost_hostname`。
+
+### 实际与期望
+
+实际：`Cannot recognize the active network. Please provide the gas faucet full URL.`
+
+期望：与 `http://127.0.0.1:9000` 相同，返回 `http://127.0.0.1:9123/v2/gas`。
+
+### 建议修复
+
+比较前把主机名 `localhost` 规范成 `127.0.0.1`，或者在本地网分支里同时接受 `localhost`。
+
+### 重复检索
+
+`localhost faucet` 和 `find_faucet_url` 在 `MystenLabs/sui` 的 issue 里没有命中。

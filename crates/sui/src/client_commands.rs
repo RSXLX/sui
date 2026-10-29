@@ -4695,6 +4695,15 @@ mod tests {
         assert!(table.contains("address balance"), "{table}");
     }
 
+    /// `http://localhost:9000` is the same localnet as `127.0.0.1:9000`. The faucet lookup
+    /// only compares against the literal hosts of those constants.
+    #[test]
+    fn find_faucet_url_accepts_localhost_hostname() {
+        let url = find_faucet_url("http://localhost:9000")
+            .expect("localhost RPC should map to the local faucet");
+        assert_eq!(url, "http://127.0.0.1:9123/v2/gas");
+    }
+
     /// 1000 whole SUI is exactly the "K" threshold and should render as 1.00K, not 1000.00.
     #[test]
     fn format_balance_uses_higher_unit_at_exact_threshold() {
