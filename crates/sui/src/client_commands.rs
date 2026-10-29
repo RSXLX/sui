@@ -4694,4 +4694,41 @@ mod tests {
         let table = gas_result(0, 42).to_string();
         assert!(table.contains("address balance"), "{table}");
     }
+
+    /// `http://localhost:9000` is the same localnet as `127.0.0.1:9000`. The faucet lookup
+    /// only compares against the literal hosts of those constants.
+    #[test]
+    fn find_faucet_url_accepts_localhost_hostname() {
+        let url = find_faucet_url("http://localhost:9000")
+            .expect("localhost RPC should map to the local faucet");
+        assert_eq!(url, "http://127.0.0.1:9123/v2/gas");
+    }
+
+    /// 1000 whole SUI is exactly the "K" threshold and should render as 1.00K, not 1000.00.
+    #[test]
+    fn format_balance_uses_higher_unit_at_exact_threshold() {
+        let one_thousand_sui = 1_000u128 * 1_000_000_000;
+        assert_eq!(
+            format_balance(one_thousand_sui, 9, 2, Some("SUI")),
+            "1.00K SUI"
+        );
+        let one_million_sui = 1_000_000u128 * 1_000_000_000;
+        assert_eq!(
+            format_balance(one_million_sui, 9, 2, Some("SUI")),
+            "1.00M SUI"
+        );
+        let one_billion_sui = 1_000_000_000u128 * 1_000_000_000;
+        assert_eq!(
+            format_balance(one_billion_sui, 9, 2, Some("SUI")),
+            "1.00B SUI"
+        );
+    }
+
+    /// Coin metadata decimals are a u8 with no upper bound in the framework. Formatting must not
+    /// panic when 10^(decimals + 9) does not fit in u128.
+    #[test]
+    fn format_balance_does_not_panic_for_high_decimals() {
+        let rendered = std::panic::catch_unwind(|| format_balance(0, 30, 2, Some("ODD")));
+        assert!(rendered.is_ok(), "formatting a 30-decimal coin panicked");
+    }
 }
