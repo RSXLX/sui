@@ -521,6 +521,23 @@ mod test {
         assert_eq!(Some(10501u16), multi_addr_dns.port());
     }
 
+    /// `/ip4/.../tcp/.../ws` is not an HTTP endpoint. `parse_http_https` currently
+    /// treats every non-http(s) protocol as plain HTTP and consumes it, so the
+    /// address is accepted.
+    #[test]
+    fn parse_ip4_rejects_non_http_protocol() {
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/80/ws".parse().unwrap();
+        let parsed = super::parse_ip4(&addr);
+        assert!(parsed.is_err(), "a /ws suffix was accepted as {parsed:?}");
+    }
+
+    #[test]
+    fn parse_dns_rejects_non_http_protocol() {
+        let addr: Multiaddr = "/dns/example.com/tcp/443/ws".parse().unwrap();
+        let parsed = super::parse_dns(&addr);
+        assert!(parsed.is_err(), "a /ws suffix was accepted as {parsed:?}");
+    }
+
     #[test]
     fn document_multiaddr_limitation_for_unix_protocol() {
         // You can construct a multiaddr by hand (ie binary format) just fine

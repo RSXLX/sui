@@ -272,3 +272,21 @@ impl DerefMut for SuiGasStatusTestWrapper {
         self.0.move_gas_status_mut()
     }
 }
+
+#[cfg(test)]
+mod gas_report_tests {
+    use super::*;
+
+    #[test]
+    fn fresh_meter_reports_zero_gas_used() {
+        let setup = SuiVMTestSetup::new();
+        // 1 SUI, in MIST. Nothing has executed, so reported gas must be zero.
+        let bound = 1_000_000_000u64;
+        let meter = setup.new_meter(Some(bound));
+        let used = VMTestSetup::used_gas(&setup, bound, meter);
+        assert_eq!(
+            used, 0,
+            "unused meter reported {used} gas against a {bound} MIST budget"
+        );
+    }
+}

@@ -127,6 +127,36 @@ impl ModuleSummary {
     }
 }
 
+#[cfg(test)]
+mod percent_coverage_tests {
+    use super::*;
+    use move_core_types::{account_address::AccountAddress, identifier::Identifier};
+
+    #[test]
+    fn native_function_summary_does_not_report_nan() {
+        let mut function_summaries = BTreeMap::new();
+        function_summaries.insert(
+            Identifier::new("hash").unwrap(),
+            FunctionSummary {
+                fn_is_native: true,
+                total: 0,
+                covered: 0,
+            },
+        );
+        let summary = ModuleSummary {
+            module_name: ModuleId::new(AccountAddress::ZERO, Identifier::new("m").unwrap()),
+            function_summaries,
+        };
+        let mut buf = Vec::new();
+        summary.summarize_human(&mut buf, true).unwrap();
+        let text = String::from_utf8(buf).unwrap();
+        assert!(
+            !text.contains("NaN"),
+            "native functions have no bytecode; coverage must not be NaN:\n{text}"
+        );
+    }
+}
+
 impl FunctionSummary {
     pub fn percent_coverage(&self) -> f64 {
         (self.covered as f64) / (self.total as f64) * 100f64
